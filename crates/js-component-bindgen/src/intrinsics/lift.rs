@@ -1047,19 +1047,26 @@ impl LiftIntrinsic {
                                 throw new TypeError(`list pointer [${{dataPtr}}] is not aligned to ${{elemAlign32}}`);
                             }}
                             ctx.storagePtr = dataPtr;
-                            const val = [];
-                            for (var i = 0; i < len; i++) {{
-                                const elemPtr = dataPtr + i * elemSize32;
-                                ctx.storagePtr = elemPtr;
-                                const [res, nextCtx] = elemLiftFn(ctx);
-                                val.push(res);
-                                ctx = nextCtx;
+                            let val;
+                            if (typedArray !== undefined) {{
+                                // A list of numbers is its elements' bytes as they are in memory.
+                                ctx.storagePtr = dataPtr + len * elemSize32;
+                                val = new typedArray(ctx.memory.buffer.slice(dataPtr, ctx.storagePtr));
+                            }} else {{
+                                val = [];
+                                for (var i = 0; i < len; i++) {{
+                                    const elemPtr = dataPtr + i * elemSize32;
+                                    ctx.storagePtr = elemPtr;
+                                    const [res, nextCtx] = elemLiftFn(ctx);
+                                    val.push(res);
+                                    ctx = nextCtx;
 
-                                ctx.storagePtr = Math.max(ctx.storagePtr, elemPtr + elemSize32);
+                                    ctx.storagePtr = Math.max(ctx.storagePtr, elemPtr + elemSize32);
+                                }}
                             }}
                             if (originalPtr !== null) {{ ctx.storagePtr = originalPtr; }}
                             if (originalLen !== null) {{ ctx.storageLen = originalLen; }}
-                            return [listValue(val), ctx];
+                            return [val, ctx];
                         }};
 
                         return function {lift_flat_list_fn}Inner(ctx) {{
