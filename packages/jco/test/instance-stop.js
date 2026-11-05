@@ -523,6 +523,40 @@ suite("stopping an instance closes its streams and futures", () => {
         assert.strictEqual(reads, 1);
     });
 
+    test("what a host stream yields after the stop is disposed", async () => {
+        const instantiate = await transpiled(READS_FROM_HOST);
+        const instance = await instantiate({});
+        let release;
+        let reading = false;
+        let disposed = 0;
+        const late = {
+            [Symbol.dispose]() {
+                disposed += 1;
+            },
+        };
+        await instance.feed({
+            [Symbol.asyncIterator]() {
+                return this;
+            },
+            next() {
+                reading = true;
+                return new Promise((resolve) => {
+                    release = () => resolve({ done: false, value: late });
+                });
+            },
+            async return() {
+                return { done: true };
+            },
+        });
+        while (!reading) {
+            await sleep(1);
+        }
+        instance._util.stop();
+        release();
+        await sleep(1);
+        assert.strictEqual(disposed, 1);
+    });
+
     test("another instance's stream is unaffected", async () => {
         const instantiate = await transpiled(WRITES_FOREVER);
         const imports = { "test:host/api": { tick() {} } };
