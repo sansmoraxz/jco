@@ -1069,6 +1069,13 @@ impl Intrinsic {
 
                         size() {{ return this.#size; }}
 
+                        *values() {{
+                            for (let idx = 2; idx < this.#data.length; idx += 2) {{
+                                const val = this.#data[idx];
+                                if (val !== undefined && val !== {rep_table_class}.FREE) {{ yield val; }}
+                            }}
+                        }}
+
                         clear() {{
                             {debug_log_fn}('[{rep_table_class}#clear()] args', {{ target: this.target }});
                             if (this.#space) {{

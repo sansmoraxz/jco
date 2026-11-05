@@ -2,6 +2,8 @@
 
 use std::fmt::Write as _;
 
+use crate::intrinsics::p3::async_future::AsyncFutureIntrinsic;
+use crate::intrinsics::p3::async_stream::AsyncStreamIntrinsic;
 use crate::intrinsics::p3::async_task::AsyncTaskIntrinsic;
 use crate::intrinsics::p3::waitable::WaitableIntrinsic;
 use crate::intrinsics::resource::ResourceIntrinsic;
@@ -157,6 +159,8 @@ impl ComponentIntrinsic {
                 let dispose = render_args.require_intrinsic(Intrinsic::SymbolDispose);
                 let own = render_args.require_intrinsic(ResourceIntrinsic::ResourceTableOwnFlag);
                 let flag = render_args.require_intrinsic(ResourceIntrinsic::ResourceTableFlag);
+                let streams = render_args.require_intrinsic(AsyncStreamIntrinsic::GlobalStreamMap);
+                let futures = render_args.require_intrinsic(AsyncFutureIntrinsic::GlobalFutureMap);
                 uwriteln!(
                     output,
                     r#"
@@ -177,6 +181,15 @@ impl ComponentIntrinsic {
                         for (const task of pending) {{ task.stop(err); }}
                         for (const state of {states}.values()) {{ state.stop(); }}
 
+                        // Both ends of every stream and future, whichever side either end is on.
+                        const errors = [];
+                        for (const channels of [{streams}, {futures}]) {{
+                            for (const channel of channels.values()) {{
+                                // (what a host has lifted is only a view of one of these)
+                                try {{ channel.end?.(); }} catch (e) {{ errors.push(e); }}
+                            }}
+                        }}
+
                         // A capture table also contains borrowed resources. Only live
                         // owned handles belong to the guest; lifting an own back to the
                         // host removes its capture. Shared tables/reps are deduplicated.
@@ -190,7 +203,6 @@ impl ComponentIntrinsic {
                         }}
                         for (const {{ captures }} of {store}.resourceTables) {{ captures.clear(); }}
                         {store}.resourceTables.length = 0;
-                        const errors = [];
                         for (const resource of resources) {{
                             // A guest holding it twice may have dropped the other handle.
                             if ({store}.disposed.has(resource)) {{ continue; }}
