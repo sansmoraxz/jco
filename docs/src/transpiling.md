@@ -352,6 +352,10 @@ Wasm that never yields control back to JavaScript.
 instance. A task counts until it has exited, however long after returning, so this covers what a
 guest goes on doing in the background. It also resolves once the instance has stopped or trapped.
 
+To wait on some calls and not the rest, say beside a task that never ends, take
+`instance._util.lastTaskGroup()` straight after calling an export, in the same turn, and pass those to
+`whenIdle(groups)`. A task group is a call's task and those of everything it called, transitively.
+
 ### Runtime overrides
 
 The optional fourth argument, `options`, configures the instantiation. Its type is exported

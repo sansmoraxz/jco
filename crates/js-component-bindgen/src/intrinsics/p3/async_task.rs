@@ -1175,6 +1175,9 @@ impl AsyncTaskIntrinsic {
                 let component_idx_globals =
                     render_args.require_intrinsic(Self::GlobalAsyncCurrentComponentIdxs);
 
+                let scheduler = render_args.require_intrinsic(Intrinsic::Component(
+                    ComponentIntrinsic::GlobalStoreAsyncState,
+                ));
                 output.push_str(&format!(
                     r#"
                     function {fn_name}(args) {{
@@ -1215,6 +1218,8 @@ impl AsyncTaskIntrinsic {
                             errHandling,
                             callingWasmExport,
                         }});
+
+                        {scheduler}.lastTask = newTask;
 
                         const newTaskID = newTask.id();
                         const newTaskMeta = {{ id: newTaskID, componentIdx, task: newTask }};

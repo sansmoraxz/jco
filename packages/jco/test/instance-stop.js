@@ -688,6 +688,29 @@ suite("knowing when an instance is idle", () => {
         assert.isTrue(await settled(instance._util.whenIdle().then(() => sleep(0))));
     });
 
+    test("a task group can be waited on beside another that goes on", async () => {
+        const instance = await (await transpiled(LINGERS))({});
+        const [one, other] = [oneByte(), oneByte()];
+        await instance.feed(one.stream);
+        const first = instance._util.lastTaskGroup();
+        await instance.feed(other.stream);
+        const second = instance._util.lastTaskGroup();
+        assert.notStrictEqual(first, second);
+
+        const firstIdle = instance._util.whenIdle([first]);
+        assert.isFalse(await settled(firstIdle));
+        one.release();
+        assert.isTrue(await settled(firstIdle), "the other's work is not this one's");
+        assert.isFalse(await settled(instance._util.whenIdle()), "it is still everything's");
+        const secondIdle = instance._util.whenIdle([second]);
+        assert.isFalse(await settled(secondIdle));
+        assert.isTrue(await settled(instance._util.whenIdle([first])));
+        other.release();
+        assert.isTrue(await settled(secondIdle));
+        assert.isTrue(await settled(instance._util.whenIdle()));
+        assert.isTrue(await settled(instance._util.whenIdle([])));
+    });
+
     test("another instance of the same module is its own", async () => {
         const instantiate = await transpiled(LINGERS);
         const [first, second] = [await instantiate({}), await instantiate({})];
