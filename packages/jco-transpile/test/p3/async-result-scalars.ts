@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { suite, test, assert, beforeAll, afterAll } from 'vitest';
 
 import { setupAsyncTest } from '../helpers.js';
-import { AsyncFunction, LOCAL_TEST_COMPONENTS_DIR } from '../common.js';
+import { AsyncFunction, LOCAL_TEST_COMPONENTS_DIR, P3_COMPONENT_FIXTURES_DIR } from '../common.js';
 import { WASIShim } from '@bytecodealliance/preview2-shim/instantiation';
 
 // Regression tests for lifting variant payloads from direct params
@@ -88,5 +88,44 @@ suite('async export scalar results (direct-param task.return)', () => {
 
     test('result<record{u64, u32}, string> ok (joined slots inside a record payload)', async () => {
         assert.deepEqual(await api().getRecordU64(43n), { val: 43n, tag: 7 });
+    });
+});
+
+// A `char` result lifted from a flat parameter is the Unicode scalar value it
+// names, U+0000 and code points past U+FFFF included, and anything else traps.
+suite('async export char result (direct-param task.return)', () => {
+    const setup = () =>
+        setupAsyncTest({
+            asyncMode: 'jspi',
+            component: {
+                name: 'async-export-char-result',
+                path: join(P3_COMPONENT_FIXTURES_DIR, 'async-export-char-result.wat'),
+            },
+        });
+
+    test.concurrent('a char result is lifted from its code point', async () => {
+        const { instance, cleanup } = await setup();
+        try {
+            for (const char of ['A', '\0', '\u{ffff}', '\u{1f680}', '\u{10ffff}']) {
+                assert.strictEqual(await instance.charOf(char.codePointAt(0)), char);
+            }
+        } finally {
+            await cleanup();
+        }
+    });
+
+    test.concurrent.each([0xd800, 0xdfff, 0x110000])('code point %i is rejected', async (codePoint) => {
+        const { instance, cleanup } = await setup();
+        try {
+            let error: unknown;
+            try {
+                await instance.charOf(codePoint);
+            } catch (err) {
+                error = err;
+            }
+            assert.instanceOf(error, Error);
+        } finally {
+            await cleanup();
+        }
     });
 });

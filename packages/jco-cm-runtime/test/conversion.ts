@@ -133,11 +133,12 @@ test.concurrent('bitcasts preserve signed zero, infinities, payload bits, and ro
 test.concurrent('preserves existing character and string conversion behavior', () => {
     const c = conversion();
     expect(c.i32ToChar(65)).toBe('A');
-    for (const value of [0, -1, NaN, 0xd800, 0xdfff, 0x110000]) {
+    expect(c.i32ToChar(0)).toBe('\0');
+    expect(c.i32ToChar(0x1f680)).toBe('\u{1f680}');
+    expect(c.i32ToChar(0x10ffff)).toBe('\u{10ffff}');
+    for (const value of [-1, NaN, 0xd800, 0xdfff, 0x110000]) {
         expect(() => c.i32ToChar(value)).toThrow();
     }
-    // This helper currently uses UTF-16 fromCharCode, distinct from validateGuestChar.
-    expect(c.i32ToChar(0x1f680)).toBe('\uf680');
     expect(c.toString(undefined)).toBe('undefined');
     expect(c.toString({ toString: () => 'value' })).toBe('value');
     expect(() => c.toString(Symbol('value'))).toThrow('symbols cannot be converted to strings');
