@@ -5,7 +5,7 @@ import { suite, test, assert } from 'vitest';
 import { WASIShim } from '@bytecodealliance/preview2-shim/instantiation';
 
 import { setupAsyncTest } from '../helpers.js';
-import { AsyncFunction, LOCAL_TEST_COMPONENTS_DIR } from '../common.js';
+import { AsyncFunction, LOCAL_TEST_COMPONENTS_DIR, P3_COMPONENT_FIXTURES_DIR } from '../common.js';
 
 // Regression coverage for the flat lowering of 1-byte async host import
 // results (`bool`, `u8`, `s8`) and elementwise-lowered `list<u8>` results:
@@ -111,6 +111,30 @@ suite('async host import scalar result lowering (strict)', () => {
             }
             assert.instanceOf(error, TypeError);
             assert.strictEqual((error as TypeError).message, message);
+        } finally {
+            await cleanup();
+        }
+    });
+});
+
+// A `char` an async host import returns is written into guest memory as its
+// code point, U+0000 and code points past U+FFFF included.
+suite('async host import char result lowering', () => {
+    test.concurrent('a char result is written as its code point', async () => {
+        let next = '';
+        const { instance, cleanup } = await setupAsyncTest({
+            asyncMode: 'jspi',
+            component: {
+                name: 'async-import-char-result',
+                path: join(P3_COMPONENT_FIXTURES_DIR, 'async-import-char-result.wat'),
+                imports: { 'get-char': { default: async () => next } },
+            },
+        });
+        try {
+            for (const char of ['A', '\0', '\u{ffff}', '\u{1f680}', '\u{10ffff}']) {
+                next = char;
+                assert.strictEqual(await instance.run(), char.codePointAt(0));
+            }
         } finally {
             await cleanup();
         }
