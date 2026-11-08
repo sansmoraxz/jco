@@ -344,7 +344,8 @@ impl LiftIntrinsic {
 
                         if (ctx.useDirectParams) {{
                             if (ctx.params.length === 0) {{ throw new Error('expected at least a single i32 argument'); }}
-                            val = ctx.params[0];
+                            // The bits above the type's width are ignored (Canonical ABI `lift_flat_signed`)
+                            val = ctx.params[0] << 24 >> 24;
                             ctx.params = ctx.params.slice(1);
                             return [val, ctx];
                         }}
@@ -376,7 +377,8 @@ impl LiftIntrinsic {
 
                         if (ctx.useDirectParams) {{
                             if (ctx.params.length === 0) {{ throw new Error('expected at least a single i32 argument'); }}
-                            val = ctx.params[0];
+                            // The bits above the type's width are ignored (Canonical ABI `lift_flat_unsigned`)
+                            val = ctx.params[0] & 0xff;
                             ctx.params = ctx.params.slice(1);
                             return [val, ctx];
                         }}
@@ -409,7 +411,8 @@ impl LiftIntrinsic {
 
                         if (ctx.useDirectParams) {{
                             if (ctx.params.length === 0) {{ throw new Error('expected at least a single i32 argument'); }}
-                            val = ctx.params[0];
+                            // The bits above the type's width are ignored (Canonical ABI `lift_flat_signed`)
+                            val = ctx.params[0] << 16 >> 16;
                             ctx.params = ctx.params.slice(1);
                             return [val, ctx];
                         }}
@@ -441,7 +444,8 @@ impl LiftIntrinsic {
 
                         if (ctx.useDirectParams) {{
                             if (ctx.params.length === 0) {{ throw new Error('expected at least a single i32 argument'); }}
-                            val = ctx.params[0];
+                            // The bits above the type's width are ignored (Canonical ABI `lift_flat_unsigned`)
+                            val = ctx.params[0] & 0xffff;
                             ctx.params = ctx.params.slice(1);
                             return [val, ctx];
                         }}
@@ -912,7 +916,10 @@ impl LiftIntrinsic {
                             let liftRes;
                             const originalPtr = ctx.storagePtr;
                             const numCases =  caseMetas.length;
-                            if (caseMetas.length < 256) {{
+                            if (ctx.useDirectParams) {{
+                                // A flat discriminant is a whole i32, which must name a case
+                                liftRes = {lift_u32}(ctx);
+                            }} else if (caseMetas.length < 256) {{
                                 liftRes = {lift_u8}(ctx);
                             }} else if (numCases >= 256 && numCases < 65536) {{
                                 liftRes = {lift_u16}(ctx);

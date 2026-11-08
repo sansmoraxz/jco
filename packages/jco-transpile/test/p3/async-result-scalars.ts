@@ -129,3 +129,104 @@ suite('async export char result (direct-param task.return)', () => {
         }
     });
 });
+
+// An `s8`, `u8`, `s16` or `u16` result lifted from a flat parameter is taken from
+// the low bits of its core i32 (Canonical ABI `lift_flat_signed` and
+// `lift_flat_unsigned`), whatever the bits above them are.
+suite('async export small integer results (direct-param task.return)', () => {
+    test.concurrent.each([
+        [
+            's8Of',
+            [
+                [0xff, -1],
+                [0x80, -128],
+                [0x7f, 127],
+                [0xffffffff, -1],
+                [0x12345680, -128],
+            ],
+        ],
+        [
+            'u8Of',
+            [
+                [0xff, 255],
+                [0x7f, 127],
+                [0x1ff, 255],
+                [0xffffffff, 255],
+                [0x12345680, 128],
+            ],
+        ],
+        [
+            's16Of',
+            [
+                [0xffff, -1],
+                [0x8000, -32768],
+                [0x7fff, 32767],
+                [0xffffffff, -1],
+                [0x12348000, -32768],
+            ],
+        ],
+        [
+            'u16Of',
+            [
+                [0xffff, 65535],
+                [0x7fff, 32767],
+                [0x1ffff, 65535],
+                [0xffffffff, 65535],
+                [0x12348000, 32768],
+            ],
+        ],
+    ])('%s lifts each result from its low bits', async (fn, cases) => {
+        const { instance, cleanup } = await setupAsyncTest({
+            asyncMode: 'jspi',
+            component: {
+                name: `async-export-small-int-results-${fn}`,
+                path: join(P3_COMPONENT_FIXTURES_DIR, 'async-export-small-int-results.wat'),
+            },
+        });
+        try {
+            for (const [bits, value] of cases) {
+                assert.strictEqual(await instance[fn](bits), value);
+            }
+        } finally {
+            await cleanup();
+        }
+    });
+});
+
+// An `option<u8>` result's flat discriminant is a whole i32: its payload is taken
+// from its low bits, but a discriminant that names no case traps.
+suite('async export option<u8> result (direct-param task.return)', () => {
+    const setup = () =>
+        setupAsyncTest({
+            asyncMode: 'jspi',
+            component: {
+                name: 'async-export-small-int-results-option',
+                path: join(P3_COMPONENT_FIXTURES_DIR, 'async-export-small-int-results.wat'),
+            },
+        });
+
+    test.concurrent('the payload is lifted from its low bits', async () => {
+        const { instance, cleanup } = await setup();
+        try {
+            assert.strictEqual(await instance.optionU8Of(0, 0x1ff), undefined);
+            assert.strictEqual(await instance.optionU8Of(1, 0x1ff), 255);
+        } finally {
+            await cleanup();
+        }
+    });
+
+    test.concurrent.each([2, 0x101, 0xffffffff])('discriminant %i is rejected', async (discriminant) => {
+        const { instance, cleanup } = await setup();
+        try {
+            let error: unknown;
+            try {
+                await instance.optionU8Of(discriminant, 1);
+            } catch (err) {
+                error = err;
+            }
+            assert.instanceOf(error, Error);
+        } finally {
+            await cleanup();
+        }
+    });
+});
