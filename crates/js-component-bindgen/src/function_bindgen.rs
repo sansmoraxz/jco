@@ -609,14 +609,6 @@ impl FunctionBindgen<'_> {
         Some((code, result_var))
     }
 
-    fn clamp_guest<T>(&mut self, results: &mut Vec<String>, operands: &[String], min: T, max: T)
-    where
-        T: std::fmt::Display,
-    {
-        let clamp = self.intrinsic(Intrinsic::ClampGuest);
-        results.push(format!("{}({}, {}, {})", clamp, operands[0], min, max));
-    }
-
     fn load(
         &mut self,
         method: &str,
@@ -1088,12 +1080,13 @@ impl Bindgen for FunctionBindgen<'_> {
                 }
             }
 
-            Instruction::U8FromI32 => self.clamp_guest(results, operands, u8::MIN, u8::MAX),
+            // The bits above the type's width are ignored (Canonical ABI `lift_flat_unsigned`)
+            Instruction::U8FromI32 => results.push(format!("(({}) & 0xff)", operands[0])),
 
             // The bits above the type's width are ignored (Canonical ABI `lift_flat_signed`)
             Instruction::S8FromI32 => results.push(format!("(({}) << 24 >> 24)", operands[0])),
 
-            Instruction::U16FromI32 => self.clamp_guest(results, operands, u16::MIN, u16::MAX),
+            Instruction::U16FromI32 => results.push(format!("(({}) & 0xffff)", operands[0])),
 
             Instruction::S16FromI32 => results.push(format!("(({}) << 16 >> 16)", operands[0])),
 
