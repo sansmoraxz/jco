@@ -1011,11 +1011,12 @@ impl LowerIntrinsic {
                             if (v === null || v === undefined) {{
                                 ctx.vals[0] = {{ tag: 'none' }};
                             }} else if (payloadMaybeNull) {{
+                                // A `none` has no `val`, as the lift produces it
                                 const isNotOptionObject = typeof v !== 'object'
-                                                          || Object.keys(v).length !== 2
                                                           || !('tag' in v)
                                                           || !(v.tag === 'some' || v.tag === 'none')
-                                                          || !('val' in v);
+                                                          || Object.keys(v).length !== ('val' in v ? 2 : 1)
+                                                          || (v.tag === 'some' && !('val' in v));
                                 if (isNotOptionObject) {{
                                     ctx.vals[0] = {{ tag: 'some', val: v }};
                                 }}
