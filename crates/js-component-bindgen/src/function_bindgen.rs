@@ -1090,11 +1090,12 @@ impl Bindgen for FunctionBindgen<'_> {
 
             Instruction::U8FromI32 => self.clamp_guest(results, operands, u8::MIN, u8::MAX),
 
-            Instruction::S8FromI32 => self.clamp_guest(results, operands, i8::MIN, i8::MAX),
+            // The bits above the type's width are ignored (Canonical ABI `lift_flat_signed`)
+            Instruction::S8FromI32 => results.push(format!("(({}) << 24 >> 24)", operands[0])),
 
             Instruction::U16FromI32 => self.clamp_guest(results, operands, u16::MIN, u16::MAX),
 
-            Instruction::S16FromI32 => self.clamp_guest(results, operands, i16::MIN, i16::MAX),
+            Instruction::S16FromI32 => results.push(format!("(({}) << 16 >> 16)", operands[0])),
 
             Instruction::U32FromI32 => results.push(format!("{} >>> 0", operands[0])),
 
