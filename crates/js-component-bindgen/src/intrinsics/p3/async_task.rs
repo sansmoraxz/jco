@@ -3092,9 +3092,10 @@ impl AsyncTaskIntrinsic {
                             // TODO(fix): we should be able to easily have the caller's meomry
                             // to lower into here, but it's not present in PrepareCall
                             const memory = callMetadata.memory ?? this.#parentTask?.getReturnMemory() ?? {lookup_memories_for_component}{{ componentIdx: this.#parentTask?.componentIdx() }})[0];
-                            // NOTE: cancelled resolutions carry no value, so nothing is lowered
+                            // NOTE: cancelled resolutions carry no value, so nothing is lowered,
+                            // and a result pointer may be 0, which is a valid address
                             const returned = this.#state === {subtask_class}.State.RETURNED;
-                            if (returned && callMetadata && !callMetadata.returnFn && (this.isAsync || callMetadata.funcTypeIsAsync) && callMetadata.resultPtr && memory) {{
+                            if (returned && callMetadata && !callMetadata.returnFn && (this.isAsync || callMetadata.funcTypeIsAsync) && callMetadata.resultPtr != null && memory) {{
                                 const {{ resultPtr, realloc }} = callMetadata;
                                 const lowers = callMetadata.lowers; // may have been updated in task.return of the child
                                 if (lowers && lowers.length > 0) {{

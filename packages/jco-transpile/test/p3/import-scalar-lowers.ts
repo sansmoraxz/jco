@@ -140,3 +140,23 @@ suite('async host import char result lowering', () => {
         }
     });
 });
+
+// An async host import's result is written wherever the guest asks for it,
+// address 0 included.
+suite('async host import result lowering at address 0', () => {
+    test.concurrent.each(['run', 'runStackful'])('%s finds the result at address 0', async (run) => {
+        const { instance, cleanup } = await setupAsyncTest({
+            asyncMode: 'jspi',
+            component: {
+                name: `async-import-result-at-zero-${run}`,
+                path: join(P3_COMPONENT_FIXTURES_DIR, 'async-import-result-at-zero.wat'),
+                imports: { get: { default: async () => 42 } },
+            },
+        });
+        try {
+            assert.strictEqual(await instance[run](), 42);
+        } finally {
+            await cleanup();
+        }
+    });
+});
