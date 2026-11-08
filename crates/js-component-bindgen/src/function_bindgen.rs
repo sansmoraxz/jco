@@ -1189,17 +1189,11 @@ impl Bindgen for FunctionBindgen<'_> {
                 }
             }
 
+            // Any nonzero value is true (Canonical ABI `convert_int_to_bool`)
             Instruction::BoolFromI32 => {
                 let tmp = self.tmp();
                 uwrite!(self.src, "var bool{} = {};\n", tmp, operands[0]);
-                if self.valid_lifting_optimization {
-                    results.push(format!("!!bool{tmp}"));
-                } else {
-                    let throw = self.intrinsic(Intrinsic::ThrowInvalidBool);
-                    results.push(format!(
-                        "bool{tmp} == 0 ? false : (bool{tmp} == 1 ? true : {throw}())"
-                    ));
-                }
+                results.push(format!("!!bool{tmp}"));
             }
 
             Instruction::I32FromBool => {

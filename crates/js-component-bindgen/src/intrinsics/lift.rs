@@ -311,7 +311,8 @@ impl LiftIntrinsic {
 
                         if (ctx.useDirectParams) {{
                             if (ctx.params.length === 0) {{ throw new Error('expected at least a single i32 argument'); }}
-                            val = ctx.params[0] === 1;
+                            // Any nonzero value is true (Canonical ABI `convert_int_to_bool`)
+                            val = ctx.params[0] !== 0;
                             ctx.params = ctx.params.slice(1);
                             return [val, ctx];
                         }}
@@ -320,7 +321,7 @@ impl LiftIntrinsic {
                             throw new Error(`insufficient storage ([${{ctx.storageLen}}] bytes) for lift (bool requires 1 byte)`);
                         }}
 
-                        val = new DataView(ctx.memory.buffer).getUint8(ctx.storagePtr, true) === 1;
+                        val = new DataView(ctx.memory.buffer).getUint8(ctx.storagePtr, true) !== 0;
 
                         ctx.storagePtr += 1;
                         if (ctx.storageLen !== undefined) {{ ctx.storageLen -= 1; }}
